@@ -1,50 +1,46 @@
 # srvcs-mode
 
-The statistical-mode service of the srvcs.cloud distributed standard library.
+## Name
 
-Its single concern: **what is the most frequent value in a list of integers?**
-It counts how often each integer appears and reports the most frequent one. On a
-tie it returns the **smallest** of the most-frequent values.
+| Field | Value |
+| --- | --- |
+| Service | `srvcs-mode` |
+| Slug | `mode` |
+| Repository | `srvcs/mode` |
+| Package | `srvcs-mode` |
+| Kind | `leaf` |
 
-`srvcs-mode` is a **leaf**: it depends on no other service and makes no network
-calls. All work is local.
+## Function
 
-```text
-result = the integer that appears most often in values
-         (ties broken by choosing the smallest such integer)
-```
+comparison: most frequent value
+
+## Dependencies
+
+None.
 
 ## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/` | Service identity, concern, and dependency list |
-| `POST` | `/` | Report the most frequent integer in `values` |
-| `GET` | `/healthz` `/readyz` `/metrics` `/openapi.json` | srvcs service standard surface |
+| `GET` | `/` | Service identity |
+| `POST` | `/` | Evaluate the service function |
+| `GET` | `/healthz` | Liveness probe |
+| `GET` | `/readyz` | Readiness probe |
+| `GET` | `/metrics` | Prometheus metrics |
+| `GET` | `/openapi.json` | OpenAPI document |
 
-```sh
-curl -s -X POST localhost:8080/ -H 'content-type: application/json' -d '{"values": [1, 2, 2, 3]}'
-# {"values":[1,2,2,3],"result":2}
+## Inputs
 
-curl -s -X POST localhost:8080/ -H 'content-type: application/json' -d '{"values": [4, 4, 5, 5]}'
-# {"values":[4,4,5,5],"result":4}
-```
+| Name | Type | Required |
+| --- | --- | --- |
+| `values` | `json[]` | yes |
 
-Responses:
+## Outputs
 
-- `200 {"values": [...], "result": <int>}` — evaluated. `result` is the most
-  frequent integer; on a tie it is the smallest of the most-frequent integers.
-- `422 {"error": "values must be a non-empty list of integers"}` — the list is
-  empty, or some element of `values` is not a JSON integer.
-
-The result is always an `i64`. A singleton list returns its only element; a list
-of all-distinct integers (every element ties at count one) returns the smallest.
-
-## Dependencies
-
-None. `srvcs-mode` is a leaf comparison service. Because it owns its own
-validation, it rejects an empty list or any non-integer element directly with
-`422` rather than forwarding to a dependency.
+| Name | Type |
+| --- | --- |
+| `values` | `json[]` |
+| `result` | `integer` |
 
 ## Configuration
 
@@ -54,7 +50,13 @@ validation, it rejects an empty list or any non-integer element directly with
 | `SRVCS_ENV` | `development` | Environment label for logs |
 | `RUST_LOG` | `info,tower_http=info` | Tracing filter |
 
-## Local checks
+## Error Behavior
+
+- `422` means the request could not be evaluated for the documented input shape.
+- `503` means a required dependency was unavailable or returned an unexpected response.
+- Dependency validation errors are forwarded when this service delegates validation.
+
+## Local Checks
 
 ```sh
 cargo fmt --check
@@ -62,8 +64,8 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-See [`srvcs/platform`](https://github.com/srvcs/platform) for the shared
-standard.
+See the [srvcs service standard](https://github.com/srvcs/platform/blob/main/STANDARD.md) for the full operational contract.
 
-> Note: the `cargoHash` in `flake.nix` is inherited from the template and must be
-> refreshed with a `nix build` before the Nix gates pass.
+## Metadata
+
+Machine-readable service metadata lives in `srvcs.yaml`. Keep it aligned with this README when the service contract changes.
